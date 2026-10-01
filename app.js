@@ -1,11 +1,11 @@
-/* موقع يحيى أحمد — واجهة تقرأ المقالات والتعليقات مباشرة من المدونة الأصلية على ووردبريس. */
+/* موقع يحيى أحمد محمود — واجهة تقرأ المقالات والتعليقات مباشرة من المدونة الأصلية على ووردبريس. */
 (function () {
   'use strict';
 
   var C = window.SITE;
   var API = 'https://public-api.wordpress.com/rest/v1.1/sites/' + C.wp;
-  var FIELDS = 'ID,date,modified,title,URL,slug,excerpt,content,categories,tags,discussion';
-  var CACHE_KEY = 'ya.data.v1';
+  var FIELDS = 'ID,date,modified,title,URL,slug,excerpt,content,categories,tags,discussion,featured_image';
+  var CACHE_KEY = 'ya.data.v2';
   var main = document.getElementById('main');
 
   var S = { posts: [], pages: [], byId: {}, quotes: [], ready: false, view: 'cards' };
@@ -110,6 +110,14 @@
     }
     return '<svg class="art" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' + g + '</svg>';
   }
+  /* الصورة البارزة للمقال إن وُجدت، وإلا الرسمة الهندسية */
+  function imgUrl(u, w) {
+    if (!u) return '';
+    return u + (u.indexOf('?') < 0 && /wordpress\.com\//.test(u) ? '?w=' + w : '');
+  }
+  function visual(p, pi, w) {
+    return p.img ? '<img class="pic" src="' + esc(imgUrl(p.img, w)) + '" alt="" loading="lazy" decoding="async">' : art(p.id, pi);
+  }
   function heroArt() {
     return '<svg class="hero-art" viewBox="0 0 300 420" aria-hidden="true" focusable="false">' +
       '<path d="M40 410V150a110 110 0 0 1 220 0V410" fill="none" stroke="#e0a53a" stroke-width="2"/>' +
@@ -169,7 +177,7 @@
       excerpt: ex, cats: cats, tags: Object.keys(p.tags || {}),
       ncom: (p.discussion && p.discussion.comment_count) || 0,
       comOpen: !!(p.discussion && p.discussion.comments_open),
-      en: isLatin(title), pdf: firstPdf(root), modified: p.modified || ''
+      en: isLatin(title), pdf: firstPdf(root), modified: p.modified || '', img: typeof p.featured_image === 'string' ? p.featured_image : ''
     };
   }
 
@@ -340,7 +348,7 @@
     var idx = palOf(p), pal = PAL[idx];
     var showMins = p.words >= 40;
     return '<article class="card k-' + size + '" style="--cbg:' + pal.bg + ';--cfg:' + pal.fg + '">' +
-      '<div class="card-art">' + art(p.id, idx) + '</div>' +
+      '<div class="card-art' + (p.img ? ' has-img' : '') + '">' + visual(p, idx, 900) + '</div>' +
       '<div class="card-body">' +
         '<p class="card-meta"><span>' + esc(fmtDate(p.d)) + '</span>' + (showMins ? '<span>' + minsLabel(p.mins) + '</span>' : '') + '</p>' +
         '<h3 class="card-title"' + (p.en ? ' dir="ltr" lang="en"' : '') + '><a href="' + url({ p: p.id }) + '" data-link>' + esc(p.title) + '</a></h3>' +
@@ -393,7 +401,8 @@
         var pal = PAL[(i * 3 + 4) % PAL.length];
         return '<article class="book">' +
           '<a class="cover" href="' + url({ p: p.id }) + '" data-link style="--cbg:' + pal.bg + ';--cfg:' + pal.fg + '" aria-label="' + esc(p.title) + '">' +
-            art(p.id + 5, (i * 3 + 4)) + '<span class="cover-t">' + esc(p.title) + '</span><span class="cover-a">يحيى أحمد</span></a>' +
+            (p.img ? '<img class="pic" src="' + esc(imgUrl(p.img, 600)) + '" alt="" loading="lazy" decoding="async">'
+              : art(p.id + 5, (i * 3 + 4)) + '<span class="cover-t">' + esc(p.title) + '</span><span class="cover-a">' + esc(C.name) + '</span>') + '</a>' +
           '<div class="book-body"><h3 class="book-t"><a href="' + url({ p: p.id }) + '" data-link>' + esc(p.title) + '</a></h3>' +
             '<p class="book-meta">' + esc(fmtDate(p.d)) + (p.ncom ? '، ' + countLabel(p.ncom, 'تعليق واحد', 'تعليقان', 'تعليقات', 'تعليقًا') : '') + '</p>' +
             (p.excerpt && p.words >= 40 ? '<p class="book-ex">' + esc(p.excerpt.slice(0, 200)) + '…</p>' : '') +
@@ -423,11 +432,11 @@
 
     var hero = '<section class="hero">' +
       '<div class="hero-name">' + heroArt() +
-        '<h1 class="name"><span>يحيى</span><span class="name-2">أحمد</span></h1>' +
+        '<h1 class="name">' + C.name.split(' ').map(function (w, k) { return '<span' + (k === 1 ? ' class="name-2"' : '') + '>' + esc(w) + '</span>'; }).join('') + '</h1>' +
         '<p class="hero-count">' + esc(document.getElementById('foot-note').textContent) + '</p>' +
       '</div>' +
       '<div class="hero-side">' + quoteBox() +
-        (latest ? '<article class="latest" style="--cbg:' + PAL[palOf(latest)].bg + ';--cfg:' + PAL[palOf(latest)].fg + '">' + art(latest.id, palOf(latest)) +
+        (latest ? '<article class="latest' + (latest.img ? ' has-img' : '') + '" style="--cbg:' + PAL[palOf(latest)].bg + ';--cfg:' + PAL[palOf(latest)].fg + '">' + visual(latest, palOf(latest), 900) +
           '<div class="latest-body"><p class="latest-k">أحدث مقال</p>' +
           '<h2 class="latest-t"' + (latest.en ? ' dir="ltr" lang="en"' : '') + '><a href="' + url({ p: latest.id }) + '" data-link>' + esc(latest.title) + '</a></h2>' +
           '<p class="card-meta"><span>' + esc(fmtDate(latest.d)) + '</span>' + (latest.words >= 40 ? '<span>' + minsLabel(latest.mins) + '</span>' : '') + '</p></div></article>' : '') +
@@ -481,12 +490,12 @@
     var newer = S.posts[p.i - 1], older = S.posts[p.i + 1];
     var share = encodeURIComponent(location.href), st = encodeURIComponent(p.title);
     var html = '<article class="post">' +
-      '<header class="post-head" style="--cbg:' + pal.bg + ';--cfg:' + pal.fg + '">' + art(p.id, palOf(p)) +
+      '<header class="post-head' + (p.img ? ' has-img' : '') + '" style="--cbg:' + pal.bg + ';--cfg:' + pal.fg + '">' + visual(p, palOf(p), 1400) +
         '<div class="post-head-in">' +
           '<p class="post-meta">' + catChips(p) + '<span class="tag plain">' + esc(fmtDate(p.d)) + '</span>' +
             (p.words >= 40 ? '<span class="tag plain">' + minsLabel(p.mins) + '</span>' : '') + '</p>' +
           '<h1 class="post-title"' + (p.en ? ' dir="ltr" lang="en"' : '') + '>' + esc(p.title) + '</h1>' +
-          '<p class="by">بقلم يحيى أحمد</p>' +
+          '<p class="by">بقلم ' + esc(C.name) + '</p>' +
         '</div></header>' + toggle +
       '<div class="prose' + (bodyLang === 'en' ? ' en' : '') + '" id="prose" dir="' + (bodyLang === 'en' ? 'ltr' : 'rtl') + '" lang="' + bodyLang + '"></div>' +
       (p.tags.length ? '<p class="tags"><span class="flabel">الوسوم</span>' + p.tags.map(function (t) { return '<a class="tag" href="' + url({ t: t }) + '" data-link>#' + esc(t) + '</a>'; }).join('') + '</p>' : '') +
@@ -697,12 +706,13 @@
 
   /* ---------- التشغيل ---------- */
   S.view = read('ya.view') === 'list' ? 'list' : 'cards';
+  try { localStorage.removeItem('ya.data.v1'); } catch (e) {}
   var cached = null;
   try { cached = JSON.parse(read(CACHE_KEY) || 'null'); } catch (e) { cached = null; }
   if (cached && cached.posts && cached.posts.length) { setData(cached.posts, cached.pages || []); route({ nav: false }); }
 
   Promise.all([fetchAllPosts(), fetchPages()]).then(function (r) {
-    var sig = function (posts) { return posts.map(function (p) { return p.ID + ':' + (p.modified || '') + ':' + ((p.discussion || {}).comment_count || 0); }).join('|'); };
+    var sig = function (posts) { return posts.map(function (p) { return p.ID + ':' + (p.modified || '') + ':' + ((p.discussion || {}).comment_count || 0) + ':' + (p.featured_image || ''); }).join('|'); };
     var changed = !cached || !cached.posts || sig(cached.posts) !== sig(r[0]) || (cached.pages || []).length !== r[1].length;
     store(CACHE_KEY, JSON.stringify({ t: Date.now(), posts: r[0], pages: r[1] }));
     if (!S.ready || (changed && !currentPost)) {
