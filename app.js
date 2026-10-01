@@ -51,8 +51,8 @@
   function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function url(params) {
     var q = [];
-    for (var k in params) if (params[k] != null && params[k] !== '') q.push(k + '=' + encodeURIComponent(params[k]));
-    return './' + (q.length ? '?' + q.join('&') : '');
+    for (var k in params) if (k !== 'p' && params[k] != null && params[k] !== '') q.push(k + '=' + encodeURIComponent(params[k]));
+    return '/' + (params.p ? 'p/' + params.p + '/' : '') + (q.length ? '?' + q.join('&') : '');
   }
 
   /* ---------- الرسومات الهندسية للبطاقات ---------- */
@@ -244,7 +244,7 @@
   }
   function postByUrl(href) {
     if (!href) return null;
-    var m = /[?&]p=(\d+)/.exec(href);
+    var m = /[?&]p=(\d+)/.exec(href) || /\/p\/(\d+)\/?(?:[?#]|$)/.exec(href);
     if (m && S.byId[m[1]]) return S.byId[m[1]];
     var clean = function (u) { try { return decodeURIComponent(u).replace(/^https?:\/\//, '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase(); } catch (e) { return u; } };
     var h = clean(href);
@@ -594,6 +594,8 @@
       var i = kv.indexOf('='), k = i < 0 ? kv : kv.slice(0, i), v = i < 0 ? '' : kv.slice(i + 1);
       try { o[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); } catch (e) {}
     });
+    var pm = /\/p\/(\d+)\/?$/.exec(location.pathname);
+    if (pm && !o.p) o.p = pm[1];
     return o;
   }
   function route(opts) {
@@ -710,6 +712,13 @@
   var cached = null;
   try { cached = JSON.parse(read(CACHE_KEY) || 'null'); } catch (e) { cached = null; }
   if (cached && cached.posts && cached.posts.length) { setData(cached.posts, cached.pages || []); route({ nav: false }); }
+
+  /* نسخة محفوظة مع الموقع تُستعمل في أول زيارة أو إذا تعذّر الوصول إلى ووردبريس */
+  if (!cached) {
+    getJSON('/data.json').then(function (d) {
+      if (!S.ready && d && d.posts && d.posts.length) { cached = d; setData(d.posts, d.pages || []); route({ nav: false }); }
+    }).catch(function () {});
+  }
 
   Promise.all([fetchAllPosts(), fetchPages()]).then(function (r) {
     var sig = function (posts) { return posts.map(function (p) { return p.ID + ':' + (p.modified || '') + ':' + ((p.discussion || {}).comment_count || 0) + ':' + (p.featured_image || ''); }).join('|'); };
