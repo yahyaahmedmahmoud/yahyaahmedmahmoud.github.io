@@ -38,6 +38,15 @@ function text(html) {
     .replace(/[\s ]+/g, ' ')
     .trim();
 }
+// نص المقال كاملًا كفقرات نصية (بلا أي وسوم) ليقرأه محرك البحث مباشرة من الصفحة
+function paras(html) {
+  const blocks = String(html || '')
+    .replace(/<(script|style|object|iframe|noscript)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|figcaption|tr)>|<br\s*\/?>/gi, '\n')
+    .split('\n').map(text).filter(Boolean);
+  const words = blocks.join(' ').split(' ').length;
+  return words >= 40 ? blocks.map((t) => `<p dir="auto">${esc(t)}</p>`).join('\n') : '';
+}
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let posts = [], pages = [];
@@ -89,7 +98,8 @@ for (const p of posts) {
   if (!desc) desc = defaultDesc;
   const image = typeof p.featured_image === 'string' && p.featured_image ? p.featured_image : `${SITE}/og.png`;
   const path = `/p/${p.ID}/`;
-  const body = `<article class="page"><h1 class="page-h">${esc(title)}</h1><p class="empty">${esc(desc)}</p><p class="loading" role="status">جارٍ تحميل المقال…</p></article>`;
+  const full = paras(p.content);
+  const body = `<article class="page"><h1 class="page-h" dir="auto">${esc(title)}</h1><div class="prose">${full || `<p>${esc(desc)}</p>`}</div></article>`;
   fs.mkdirSync(`${OUT}/p/${p.ID}`, { recursive: true });
   fs.writeFileSync(`${OUT}/p/${p.ID}/index.html`, page({ title: `${title} — ${NAME}`, desc, image, path, type: 'article', body }));
   urls.push(`${SITE}${path}`);
