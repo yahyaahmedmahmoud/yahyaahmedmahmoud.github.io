@@ -274,6 +274,9 @@
         } else frames[i].remove();
       }
     }
+    /* مسافات غير قابلة للكسر (تأتي مع النص المنسوخ) تمنع التفاف السطور: تُحوَّل إلى مسافات عادية */
+    var tw = root.ownerDocument.createTreeWalker(root, 4, null), tn;
+    while ((tn = tw.nextNode())) if (tn.nodeValue.indexOf('\u00a0') >= 0) tn.nodeValue = tn.nodeValue.replace(/\u00a0/g, ' ');
     var all = root.querySelectorAll('*');
     for (i = 0; i < all.length; i++) {
       var n = all[i], attrs = Array.prototype.slice.call(n.attributes), center = false;
@@ -504,11 +507,10 @@
         '<a class="btn ghost" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=' + share + '">فيسبوك</a>' +
         '<a class="btn ghost" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url=' + share + '&text=' + st + '">إكس</a>' +
         '<a class="btn ghost" target="_blank" rel="noopener" href="https://wa.me/?text=' + st + '%20' + share + '">واتساب</a>' +
-        '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc(p.url) + '">المقال على المدونة الأصلية</a>' +
       '</div>' +
       '<section class="comments" id="comments" aria-labelledby="com-h"><h2 id="com-h" class="sec-h">التعليقات</h2><div id="com-list"><p class="muted">جارٍ تحميل التعليقات…</p></div>' +
         '<p class="com-act"><a class="btn" target="_blank" rel="noopener" href="' + esc(p.url) + '#respond">اكتب تعليقًا</a>' +
-        '<span class="muted">تُكتب التعليقات على المدونة الأصلية وتظهر هنا تلقائيًا.</span></p></section>' +
+        '<span class="muted">يُفتح نموذج التعليق في صفحة جديدة، ويظهر تعليقك هنا بعد نشره.</span></p></section>' +
       '<nav class="pn" aria-label="مقالات أخرى">' +
         (newer ? '<a class="pn-a" href="' + url({ p: newer.id }) + '" data-link><span class="muted">الأحدث</span><span' + (newer.en ? ' dir="ltr" lang="en"' : '') + '>' + esc(newer.title) + '</span></a>' : '<span></span>') +
         (older ? '<a class="pn-a end" href="' + url({ p: older.id }) + '" data-link><span class="muted">الأقدم</span><span' + (older.en ? ' dir="ltr" lang="en"' : '') + '>' + esc(older.title) + '</span></a>' : '<span></span>') +
@@ -517,7 +519,7 @@
     var prose = document.getElementById('prose');
     while (bodyRoot.firstChild) prose.appendChild(document.adoptNode(bodyRoot.firstChild));
     if (p.cats.indexOf('كتيبات') >= 0) { var fbx = prose.querySelector('.filebox .btn'); if (fbx) fbx.textContent = 'تحميل الكتيب (PDF)'; }
-    if (!prose.textContent.trim() && !prose.querySelector('img,a,iframe')) prose.innerHTML = '<p class="muted">لا يوجد نص لهذا المقال هنا. <a href="' + esc(p.url) + '" target="_blank" rel="noopener">افتحه على المدونة الأصلية</a>.</p>';
+    if (!prose.textContent.trim() && !prose.querySelector('img,a,iframe')) prose.innerHTML = '<p class="muted">لا يوجد نص لهذا المقال.</p>';
     var cp = document.getElementById('copy');
     cp.addEventListener('click', function () {
       var done = function () { cp.textContent = 'تم نسخ الرابط'; setTimeout(function () { cp.textContent = 'نسخ الرابط'; }, 2000); };
@@ -558,7 +560,7 @@
       document.getElementById('com-h').textContent = 'التعليقات (' + num(all.length) + ')';
       box.innerHTML = '<ul class="coms">' + tops.map(function (c) { return one(c, 0); }).join('') + '</ul>';
     }).catch(function () {
-      if (document.getElementById('com-list')) box.innerHTML = '<p class="muted">تعذّر تحميل التعليقات الآن. <a href="' + esc(p.url) + '#comments" target="_blank" rel="noopener">اقرأها على المدونة الأصلية</a>.</p>';
+      if (document.getElementById('com-list')) box.innerHTML = '<p class="muted">تعذّر تحميل التعليقات الآن. أعد تحميل الصفحة بعد قليل.</p>';
     });
   }
 
@@ -582,7 +584,7 @@
   }
   function renderError() {
     main.innerHTML = '<section class="page"><h1 class="page-h">تعذّر تحميل المقالات</h1>' +
-      '<p class="empty">لم نتمكن من الوصول إلى المدونة الآن. تحقّق من اتصالك ثم <a href="' + location.href + '">أعد المحاولة</a>، أو اقرأ المقالات على <a href="https://' + C.wp + '/">المدونة الأصلية</a>.</p></section>';
+      '<p class="empty">لم نتمكن من تحميل المقالات الآن. تحقّق من اتصالك ثم <a href="' + location.href + '">أعد المحاولة</a>.</p></section>';
   }
 
   /* ---------- التوجيه ---------- */
