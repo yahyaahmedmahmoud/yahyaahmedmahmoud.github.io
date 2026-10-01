@@ -91,6 +91,7 @@ function page({ title, desc, image, path, type, body }) {
 
 fs.mkdirSync(OUT, { recursive: true });
 const urls = [`${SITE}/`];
+const feed = [];
 for (const p of posts) {
   const title = text(p.title) || 'بلا عنوان';
   let desc = text(p.excerpt).replace(/\s*\[?(…|\.\.\.)\]?\s*$/, '');
@@ -103,10 +104,25 @@ for (const p of posts) {
   fs.mkdirSync(`${OUT}/p/${p.ID}`, { recursive: true });
   fs.writeFileSync(`${OUT}/p/${p.ID}/index.html`, page({ title: `${title} — ${NAME}`, desc, image, path, type: 'article', body }));
   urls.push(`${SITE}${path}`);
+  feed.push({ title, desc, link: `${SITE}${path}`, date: new Date(p.date) });
 }
 fs.writeFileSync(`${OUT}/index.html`, page({ title: NAME, desc: defaultDesc, image: `${SITE}/og.png`, path: '/', type: 'website' }));
 fs.writeFileSync(`${OUT}/data.json`, JSON.stringify({ t: Date.now(), posts, pages }));
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
+// خلاصة RSS خاصة بالموقع: روابطها تقود إلى صفحات المقالات هنا
+feed.sort((a, b) => b.date - a.date);
+fs.writeFileSync(`${OUT}/feed.xml`, `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>${esc(NAME)}</title>
+<link>${SITE}/</link>
+<description>${esc(defaultDesc)}</description>
+<language>ar</language>
+<atom:link href="${SITE}/feed.xml" rel="self" type="application/rss+xml"/>
+${feed.slice(0, 40).map((f) => `<item><title>${esc(f.title)}</title><link>${f.link}</link><guid isPermaLink="true">${f.link}</guid><pubDate>${f.date.toUTCString()}</pubDate><description>${esc(f.desc)}</description></item>`).join('\n')}
+</channel>
+</rss>
+`);
 fs.writeFileSync(`${OUT}/robots.txt`, `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 fs.writeFileSync(`${OUT}/build.txt`, hash + '\n');
 console.log(`built ${posts.length} article pages for ${SITE}`);
