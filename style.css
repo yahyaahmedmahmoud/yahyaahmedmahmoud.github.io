@@ -220,6 +220,8 @@ main:focus { outline: none; }
 .com-b { font-family: var(--read); font-size: 19.5px; line-height: 1.95; overflow-wrap: break-word; }
 .com-b p { margin: 0 0 .7em; }
 .com-b a { color: var(--accent); overflow-wrap: anywhere; }
+.com.ping .com-h { margin: 0; }
+.com.ping a { color: var(--accent); }
 .com-act { margin: 22px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 14px; }
 
 .pn { max-width: 41rem; margin: 48px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

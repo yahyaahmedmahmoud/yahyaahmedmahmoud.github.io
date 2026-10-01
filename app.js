@@ -258,7 +258,13 @@
         var f = document.createElement('iframe');
         f.setAttribute('src', src); f.setAttribute('loading', 'lazy'); f.setAttribute('allowfullscreen', ''); f.setAttribute('title', 'فيديو');
         box.appendChild(f); frames[i].replaceWith(box);
-      } else frames[i].remove();
+      } else {
+        if (!strict && /^https:\/\//.test(src) && !/wp-embedded-content/.test(frames[i].getAttribute('class') || '')) {
+          var ep = document.createElement('p'), ea = document.createElement('a');
+          ea.setAttribute('href', src); ea.textContent = 'عرض المحتوى المضمَّن في صفحته الأصلية';
+          ep.appendChild(ea); frames[i].replaceWith(ep);
+        } else frames[i].remove();
+      }
     }
     var all = root.querySelectorAll('*');
     for (i = 0; i < all.length; i++) {
@@ -283,11 +289,20 @@
       link.textContent = /\.pdf/i.test(link.href) ? 'تحميل الملف (PDF)' : 'تحميل الملف';
       fb.appendChild(link); files[i].replaceWith(fb);
     }
+    /* عناصر div المستعملة كفقرات (نصوص منقولة من فيسبوك) تتحول إلى فقرات حقيقية */
+    var divs = Array.prototype.slice.call(root.querySelectorAll('div')).reverse();
+    for (i = 0; i < divs.length; i++) {
+      var dv = divs[i];
+      if (dv.classList.contains('video') || dv.querySelector('p, div, ul, ol, figure, table, blockquote, h1, h2, h3, h4, h5, h6, iframe')) continue;
+      var np = document.createElement('p');
+      while (dv.firstChild) np.appendChild(dv.firstChild);
+      dv.replaceWith(np);
+    }
     /* فقرات فارغة */
-    var ps = root.querySelectorAll('p, div');
+    var ps = root.querySelectorAll('p, div, figure');
     for (i = 0; i < ps.length; i++) {
       var el = ps[i];
-      if (!el.children.length && !(el.textContent || '').replace(/[\s ]/g, '')) el.remove();
+      if (!el.querySelector('img, iframe, a[href]') && !(el.textContent || '').replace(/[\s\u00a0]/g, '')) el.remove();
     }
     var imgs = root.querySelectorAll('img');
     for (i = 0; i < imgs.length; i++) { imgs[i].setAttribute('loading', 'lazy'); imgs[i].setAttribute('decoding', 'async'); if (!imgs[i].hasAttribute('alt')) imgs[i].setAttribute('alt', ''); }
@@ -506,7 +521,7 @@
     var box = document.getElementById('com-list');
     getJSON(API + '/posts/' + p.id + '/replies/?number=100&order=ASC').then(function (j) {
       if (!document.getElementById('com-list') || currentPost !== p.id) return;
-      var all = (j.comments || []).filter(function (c) { return !c.type || c.type === 'comment'; });
+      var all = j.comments || [];
       if (!all.length) { box.innerHTML = '<p class="muted">لا توجد تعليقات على هذا المقال بعد.</p>'; return; }
       var kids = {}, tops = [], ids = {};
       all.forEach(function (c) { ids[c.ID] = 1; });
@@ -516,6 +531,15 @@
       });
       var one = function (c, depth) {
         var name = (c.author && c.author.name) || 'زائر';
+        if (c.type && c.type !== 'comment') { /* إشارة تلقائية من مقال آخر */
+          var href = (c.author && c.author.URL) || '', lp = postByUrl(href);
+          var t = textOf(name) || 'مقال آخر';
+          return '<li class="com ping"><p class="com-h"><span class="muted">إشارة من مقال آخر:</span> ' +
+            (lp ? '<a href="' + url({ p: lp.id }) + '" data-link>' + esc(lp.title) + '</a>'
+                : /^https?:\/\//.test(href) ? '<a href="' + esc(href) + '" target="_blank" rel="noopener nofollow ugc" dir="auto">' + esc(t) + '</a>' : '<span dir="auto">' + esc(t) + '</span>') +
+            ' <span class="muted">' + esc(fmtDate(String(c.date).slice(0, 10))) + '</span></p>' +
+            (kids[c.ID] ? '<ul class="coms sub">' + kids[c.ID].map(function (k) { return one(k, depth + 1); }).join('') + '</ul>' : '') + '</li>';
+        }
         var body = cleanContent(c.content, true);
         return '<li class="com"><p class="com-h"><span class="com-av" aria-hidden="true">' + esc(name.trim().charAt(0) || '؟') + '</span>' +
           '<strong dir="auto">' + esc(name) + '</strong><span class="muted">' + esc(fmtDate(String(c.date).slice(0, 10))) + '</span></p>' +
